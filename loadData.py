@@ -295,12 +295,12 @@ if __name__ == '__main__':
   #loadAllData('../data/color-image', defines.IMG_SIZE)
   #loadAllData('..\\data', defines.IMAGE_SIZE, defines.LABEL_SIZE, 160, 40)
   
-  #labelMapper = makeLabelMapper('..\\data')
-  #print(labelMapper)
+  labelMapper = makeLabelMapper('..\\data')
+  print(labelMapper)
 
   #loadAllDataAndSaveNumpy('..\\data', defines.IMAGE_SIZE, defines.LABEL_SIZE, 160, 40, labelMapper) // 클래스마다 정해진 길이로 나누어 저장
-  labelMapper = makeLabelMapper('..\\data_merge')
-  print(labelMapper)
-  loadAllDataAndSaveNumpy('..\\data_merge', defines.IMAGE_SIZE, defines.LABEL_SIZE, labelMapper)
+  #labelMapper = makeLabelMapper('..\\data_merge')
+  #print(labelMapper)
+  #loadAllDataAndSaveNumpy('..\\data_merge', defines.IMAGE_SIZE, defines.LABEL_SIZE, labelMapper)
 
-  testLoadImage('test.jpg')
+  #testLoadImage('test.jpg')
