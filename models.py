@@ -116,7 +116,7 @@ def vgg_model(imageSize, labelSize):
     optimizer = Adam(lr=m1_learningRate)
     model.compile(optimizer=optimizer,
                   loss='categorical_crossentropy',
-                  metrics=['accuracy'])
+                  metrics=['accuracy', 'f1score', 'precision', 'recall'])
 
     return model
 

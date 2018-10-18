@@ -1,7 +1,6 @@
-'''
- 손가락 예측 모델
- CNN + LSTM
-'''
+import time
+import datetime
+
 import interfaceUtils as util
 
 util.showProcess('Start Program')
@@ -10,6 +9,7 @@ import loadData as ld
 import models as models
 import train as train
 import defines as defines
+import saveLabData as savelab
 
 import tensorflow as tf
 from keras import backend as K
@@ -31,8 +31,8 @@ modelImagePath = './modelImgs'
 
 imageSize = defines.IMAGE_SIZE
 labelSize = defines.LABEL_SIZE
-trainLength = 160
-testLength = 40
+#trainLength = 160
+#testLength = 40
 
 # load dataset
 util.showProcess('Loading dataset')
@@ -40,7 +40,7 @@ util.showProcess('Loading dataset')
 print('Loading Samples : ')
 #trainImageList, trainLabelList, testImageList, testLabelList = \
 #    ld.loadAllData(dataPath, imageSize, labelSize, trainLength, testLength) # image
-dataFolder = './numpyData'
+dataFolder = './numpyExpandData'
 files = ['trainImageList.npy', 'trainLabelList.npy', 'testImageList.npy', 'testLabelList.npy']
 trainImageList, trainLabelList, testImageList, testLabelList = ld.loadNumpyData(dataFolder, files)
 
@@ -59,22 +59,65 @@ if isLoadWeight == 1:
 
 # Train
 util.showProcess('Train M1')
-accList = []
+#accList = []
+
+trainAcc = []
+trainLoss = []
+
+testAcc = []
+testLoss = []
+
+totalTime = 0
+timeList = []
+
 for i in range(epochs):
-    m1.fit(trainImageList, trainLabelList,
-        epochs=1,
-        verbose=1,
-        batch_size=batch_size)
-    
-    accuracy = train.calculateAccuracy(testImageList,
-                                   testLabelList,
-                                   len(testLabelList),
-                                   m1, verbose=1,
-                                   batch_size=1)
-    
-    accList.append(accuracy)
+  startTime = time.time()
+
+  hist = m1.fit(trainImageList, trainLabelList,
+    epochs=1,
+    verbose=1,
+    batch_size=batch_size)
+  print(hist.history)
+
+  trainAcc.append(hist.history['acc'][0])
+  trainLoss.append(hist.history['loss'][0])
+
+  endTime = time.time()
+  timeList.append(endTime - startTime)
+  
+  '''
+  accuracy = train.calculateAccuracy(testImageList,
+                                testLabelList,
+                                len(testLabelList),
+                                m1, verbose=1,
+                                batch_size=1)
+  '''
+  loss, accuracy = m1.evaluate(testImageList, testLabelList)
+  testAcc.append(accuracy)
+  testLoss.append(loss)
+
+modelName = 'vgg19'
+ts = time.time()
+st = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H_%M_%S')
+fileName = modelName + '_epochs_' + str(epochs) + '_' + st + '.txt'
+accImgFileName = modelName + '_' + st + '_acc.jpg'
+lossImgFileName = modelName + '_' + st + '_loss.jpg'
+
+fileName = 'labdata/' + fileName
+accImgFileName = 'labdata/' + accImgFileName
+lossImgFileName = 'labdata/' + lossImgFileName
+
+savelab.saveLabData((trainAcc, testAcc), (trainLoss, testLoss), timeList, fileName, accImgFileName, lossImgFileName)
+
 print('Accuracy List: ')
-print(accList)
+print(testAcc)
+
+print('Calculate Accuracy')
+accuracy = train.calculateAccuracy(testImageList,
+                                testLabelList,
+                                len(testLabelList),
+                                m1, verbose=1,
+                                batch_size=1)
 
 util.showProcess('Evaluate M1 Batch_Size_1')
 score, acc = m1.evaluate(trainImageList, trainLabelList, batch_size=1)
