@@ -150,4 +150,6 @@ def saveModelDescription(model, path, isShow):
 
   
 if __name__ == '__main__':
-  model(define.IMAGE_SIZE, define.LABEL_SIZE)
+  #model(define.IMAGE_SIZE, define.LABEL_SIZE)
+  model = vgg_model(define.IMAGE_SIZE, define.LABEL_SIZE)
+  model.summary()

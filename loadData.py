@@ -52,7 +52,7 @@ def loadAllData(rootfolder, imgSize, labelSize, trainLength, testLength):
       label += 1
 
       #print(trainLabels)
-      #print(trainSampleImageList.shape)
+      #print(trainSampleImageList.shape)  
 
   print('Samples Data Shape:')
   print(trainImageList.shape)
@@ -114,7 +114,7 @@ def loadAllDataAndSaveNumpy(rootfolder, imgSize, labelSize, trainLength, testLen
 """
 
 # 각 클래스마다 80:20의 비율로 저장
-def loadAllDataAndSaveNumpy(rootfolder, imgSize, labelSize, labelMapper):
+def loadAllDataAndSaveNumpy(rootfolder, imgSize, labelSize, labelMapper, labelLength, saveDir):
   """
   Path 읽기
   0_안녕하세요, 1_바다 ... 안의 각 샘플 폴더 모두 취합
@@ -142,7 +142,8 @@ def loadAllDataAndSaveNumpy(rootfolder, imgSize, labelSize, labelMapper):
 
       classDirPath = os.path.join(rootfolder, labelFolder)
 
-      classImageList = loadImageFiles(classDirPath, imgSize)
+      #classImageList = loadImageFiles(classDirPath, imgSize)
+      classImageList = loadImageFilesInSize(classDirPath, imgSize, labelLength)
       print(len(classImageList))
 
       trainLength = int(len(classImageList) * 0.8)
@@ -171,10 +172,56 @@ def loadAllDataAndSaveNumpy(rootfolder, imgSize, labelSize, labelMapper):
   print(testImageList.shape)
   print(testLabelList.shape)
 
-  np.save('./numpyMoreData/trainImageList.npy', trainImageList) # 영어 데이터 + 한글 데이터 저장폴더
-  np.save('./numpyMoreData/trainLabelList.npy', trainLabelList)
-  np.save('./numpyMoreData/testImageList.npy', testImageList)
-  np.save('./numpyMoreData/testLabelList.npy', testLabelList)
+  np.save(saveDir + '/trainImageList.npy', trainImageList) # 영어 데이터 + 한글 데이터 저장폴더
+  np.save(saveDir + '/trainLabelList.npy', trainLabelList)
+  np.save(saveDir + '/testImageList.npy', testImageList)
+  np.save(saveDir + '/testLabelList.npy', testLabelList)
+
+
+def loadBatchData(rootfolder, imgSize, labelSize, labelLength):
+  """
+  Path 읽기
+  0_안녕하세요, 1_바다 ... 안의 각 샘플 폴더 모두 취합
+    샘플 폴더 e.g. 1_바다/../2018-05-22_230321_kyg
+  
+  # arguments
+    e.g. rootfolder = ../data/train      
+  """
+
+  # remove front back image
+  height, width = imgSize
+
+  trainImageList = np.array([], dtype=np.int64).reshape(0, height, width, 3)
+  trainLabelList = np.array([], dtype=np.int64).reshape(0, labelSize)
+
+  label = 0
+  for labelFolder in  os.listdir(rootfolder):
+      if labelFolder == 'temp':
+          continue
+      print(labelFolder)
+      classDirPath = os.path.join(rootfolder, labelFolder)
+
+      classImageList = loadImageFilesInSize(classDirPath, imgSize, labelLength)
+      classLabelList = makeLabelList(label, labelSize, labelLength)
+      #classTrainImageList = classImageList[:labelLength]
+
+      #classTrainLabelList = makeLabelList(label, labelSize, labelLength)
+
+      trainImageList = np.vstack([trainImageList, classImageList])
+      trainLabelList = np.vstack([trainLabelList, classLabelList])
+
+      label += 1
+
+      #print(trainLabels)
+      #print(trainSampleImageList.shape)  
+
+  trainImageList, trainLabelList = shuffleDatasets(trainImageList, trainLabelList)
+
+  #print('Samples Data Shape:')
+  #print(trainImageList.shape)
+  #print(trainLabelList.shape)
+
+  return trainImageList, trainLabelList
 
 
 def loadNumpyData(dirPath, files):
@@ -246,6 +293,34 @@ def loadImageFiles(dirpath, imgSize):  # 왼쪽, 오른쪽 이미지를 번갈�
   return imgNumpyArray
 
 
+# 이미지를 불러올 때 labelLength 만큼 무작위로 불러옵니다.
+def loadImageFilesInSize(dirpath, imgSize, labelLength):  # 왼쪽, 오른쪽 이미지를 번갈아 가면서 imgList에 추가
+  filePathList = os.listdir(dirpath)
+  filePathList = shuffleDataset(filePathList)
+
+  imgList = []
+
+  idx = 0
+  for filePath in filePathList:
+      #print(filePath)
+      # keras가 제공하는 image.load_img를 이용하여 이미지를 불러옴. imgSize는 다음과 같은 튜플 : (img_height, img_width)
+      try:
+        img = image.load_img(os.path.join(dirpath, filePath), grayscale=False, target_size=imgSize)
+        imgArray = image.img_to_array(img)
+        #print(imgArray.shape)
+        imgList.append(imgArray)
+        idx += 1
+      except Exception as e:
+        print(e)
+      
+      if idx >= labelLength:
+        break
+  
+  imgNumpyArray = np.array(imgList)
+
+  return imgNumpyArray[:labelLength]
+
+
 ### shuffle
 def shuffleDataset(d1):
   '''
@@ -259,6 +334,21 @@ def shuffleDataset(d1):
   d1_shuffled = [d1[i] for i in indexes]
 
   return np.array(d1_shuffled)
+
+
+def shuffleDatasets(d1, d2):
+  '''
+  # Return
+    shuffled data (d1, d2, d3)
+  '''
+
+  indexes = list(range(len(d1)))
+  random.shuffle(indexes)
+
+  d1_shuffled = [d1[i] for i in indexes]
+  d2_shuffled = [d2[i] for i in indexes]
+
+  return np.array(d1_shuffled), np.array(d2_shuffled)
 
 
 def makeLabelList(label, labelSize, listLength):
@@ -295,12 +385,30 @@ if __name__ == '__main__':
   #loadAllData('../data/color-image', defines.IMG_SIZE)
   #loadAllData('..\\data', defines.IMAGE_SIZE, defines.LABEL_SIZE, 160, 40)
   
-  labelMapper = makeLabelMapper('..\\data')
-  print(labelMapper)
+  #labelMapper = makeLabelMapper('..\\data')
+  #print(labelMapper)
 
   #loadAllDataAndSaveNumpy('..\\data', defines.IMAGE_SIZE, defines.LABEL_SIZE, 160, 40, labelMapper) // 클래스마다 정해진 길이로 나누어 저장
   #labelMapper = makeLabelMapper('..\\data_merge')
   #print(labelMapper)
   #loadAllDataAndSaveNumpy('..\\data_merge', defines.IMAGE_SIZE, defines.LABEL_SIZE, labelMapper)
+
+  # saveDir = numpyExpandData
+  #labelLength = 1000
+  #labelMapper = makeLabelMapper('..\\data_merge_expaned_1000')
+  #print(labelMapper)
+  #loadAllDataAndSaveNumpy('..\\data_merge_expaned_1000', defines.IMAGE_SIZE, defines.LABEL_SIZE, labelMapper, labelLength)
+
+  #saveDir = 'numpyTenClass'
+  #labelLength = 1000
+  #labelMapper = makeLabelMapper('..\\data_merge_few_class')
+  #print(labelMapper)
+  #loadAllDataAndSaveNumpy('..\\data_merge_few_class', defines.IMAGE_SIZE, defines.LABEL_SIZE, labelMapper, labelLength, saveDir)
+
+  saveDir = './numpydata/numpyTenClass3000'
+  labelLength = 3000
+  labelMapper = makeLabelMapper('..\\data_merge_few_class_3000')
+  print(labelMapper)
+  loadAllDataAndSaveNumpy('..\\data_merge_few_class_3000', defines.IMAGE_SIZE, defines.LABEL_SIZE, labelMapper, labelLength, saveDir)
 
   #testLoadImage('test.jpg')

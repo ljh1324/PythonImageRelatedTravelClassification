@@ -40,15 +40,18 @@ util.showProcess('Loading dataset')
 print('Loading Samples : ')
 #trainImageList, trainLabelList, testImageList, testLabelList = \
 #    ld.loadAllData(dataPath, imageSize, labelSize, trainLength, testLength) # image
-dataFolder = './numpyExpandData'
-files = ['trainImageList.npy', 'trainLabelList.npy', 'testImageList.npy', 'testLabelList.npy']
-trainImageList, trainLabelList, testImageList, testLabelList = ld.loadNumpyData(dataFolder, files)
+#dataFolder = './numpyTenClass'
+#files = ['trainImageList.npy', 'trainLabelList.npy', 'testImageList.npy', 'testLabelList.npy']
+#trainImageList, trainLabelList, testImageList, testLabelList = ld.loadNumpyData(dataFolder, files)
 
-
+batchFolder = '../data_merge_few_class_3000'
+testsetFolder = '../data_merge_few_class_origin'
+testImageList, testLabelList = ld.loadBatchData(testsetFolder, defines.IMAGE_SIZE, defines.LABEL_SIZE, 100)
 # make model, b1/b2는 구조 print용
 util.showProcess('Model Generating')
 
-m1 = models.model(imageSize, labelSize)
+#m1 = models.model(imageSize, labelSize)
+m1 = models.vgg_model(imageSize, labelSize)
 
 models.saveModelDescription(m1, modelImagePath, False)
 
@@ -72,7 +75,7 @@ timeList = []
 
 for i in range(epochs):
   startTime = time.time()
-
+  trainImageList, trainLabelList = ld.loadBatchData(batchFolder, defines.IMAGE_SIZE, defines.LABEL_SIZE, 10)
   hist = m1.fit(trainImageList, trainLabelList,
     epochs=1,
     verbose=1,
@@ -96,19 +99,24 @@ for i in range(epochs):
   testAcc.append(accuracy)
   testLoss.append(loss)
 
-modelName = 'vgg19'
+modelName = m1.name
 ts = time.time()
 st = datetime.datetime.fromtimestamp(ts).strftime('%Y_%m_%d_%H_%M_%S')
 fileName = modelName + '_epochs_' + str(epochs) + '_' + st + '.txt'
+resultFileName = modelName + '_epochs_' + str(epochs) + '_' + st + '_prediction.txt'
 accImgFileName = modelName + '_' + st + '_acc.jpg'
 lossImgFileName = modelName + '_' + st + '_loss.jpg'
 
 fileName = 'labdata/' + fileName
 accImgFileName = 'labdata/' + accImgFileName
 lossImgFileName = 'labdata/' + lossImgFileName
+resultFileName = 'labdata/' + resultFileName
 
 savelab.saveLabData((trainAcc, testAcc), (trainLoss, testLoss), timeList, fileName, accImgFileName, lossImgFileName)
-
+try:
+    savelab.savePredictionResult(testImageList, testLabelList, m1, resultFileName)
+except Exception as e:
+    print(e)
 print('Accuracy List: ')
 print(testAcc)
 
